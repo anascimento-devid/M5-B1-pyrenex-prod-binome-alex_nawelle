@@ -6,3 +6,4 @@ httpx==0.28.1
 loguru==0.7.2
 prometheus-fastapi-instrumentator==7.0.0
 prometheus-client==0.21.1
+ce-package-nexiste-pas-demo-ci==1.0.0
