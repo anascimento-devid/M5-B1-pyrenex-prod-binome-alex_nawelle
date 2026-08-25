@@ -85,30 +85,49 @@ Vous repartez **chacun·e** du repo binôme, dans une branche perso
 
 ---
 
-## 🚀 Démarrage (le service `model` tourne déjà)
+## 🏗️ Architecture
+
+```mermaid
+flowchart LR
+    U((Navigateur)) --> FE["frontend (nginx)<br/>:8088"]
+    FE -->|"/api/* → proxy"| BE["backend (FastAPI)<br/>/score · /metrics<br/>:8001"]
+    BE -->|"/predict"| MO["model (FastAPI + joblib)<br/>/predict · /info · /metrics<br/>:8000"]
+
+    PR["Prometheus<br/>:9090"] -.->|scrape /metrics| BE
+    PR -.->|scrape /metrics| MO
+    GR["Grafana<br/>:3001"] -->|datasource| PR
+```
+
+3 conteneurs applicatifs (`frontend` → `backend` → `model`) + Prometheus qui
+scrape `model` et `backend`, + Grafana qui lit Prometheus et affiche le
+dashboard custom `pyrenex_prod` (provisionné automatiquement, pas d'import
+manuel).
+
+---
+
+## 🚀 Démarrage
+
+3 commandes pour démarrer toute la stack :
 
 ```bash
-# 1. Environnement de tests local (optionnel mais conseillé)
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
-
-# 2. Vérifier que la base fournie passe les tests
-pytest -v services/model/tests
-
-# 3. Lancer ce qui est déjà câblé (model + prometheus + grafana)
+git clone git@github.com:anascimento-devid/M5-B1-pyrenex-prod-binome-alex_nawelle.git
+cd M5-B1-pyrenex-prod-binome-alex_nawelle
 docker compose up --build
 ```
 
-> 🧰 **Avec `uv`** : `uv venv && source .venv/bin/activate` puis
-> **`uv pip install -r requirements-dev.txt`**.
-> ⚠️ Un venv créé par `uv venv` **n'embarque pas `pip`** : si vous voyez
-> `No module named pip`, c'est ça — utilisez `uv pip install`, pas `pip install`.
+Une fois les 3 healthchecks `healthy` :
+- Frontend (formulaire) : http://localhost:8088
+- Grafana (dashboard `pyrenex_prod`, login `admin`/`admin`) : http://localhost:3001
+- Prometheus : http://localhost:9090
+- Images publiées sur GHCR : [model](https://github.com/anascimento-devid/M5-B1-pyrenex-prod-binome-alex_nawelle/pkgs/container/m5-b1-pyrenex-prod-binome-alex_nawelle-model) · [backend](https://github.com/anascimento-devid/M5-B1-pyrenex-prod-binome-alex_nawelle/pkgs/container/m5-b1-pyrenex-prod-binome-alex_nawelle-backend) · [frontend](https://github.com/anascimento-devid/M5-B1-pyrenex-prod-binome-alex_nawelle/pkgs/container/m5-b1-pyrenex-prod-binome-alex_nawelle-frontend)
+
+> 🧪 Pour lancer les tests en local (optionnel, la CI le fait déjà) :
+> `python -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt && pytest -v services/model/tests`
+> — avec `uv` : `uv venv && source .venv/bin/activate && uv pip install -r requirements-dev.txt`
+> (un venv créé par `uv venv` n'embarque pas `pip` : utilisez `uv pip install`, pas `pip install`).
 
 > ⚠️ **Ports hôte** : frontend **8088** (pas 8080), Grafana **3001** (pas 3000)
 > — pour éviter les conflits courants. Model 8000, backend 8001, Prometheus 9090.
-
-Au départ, seuls `model`, `prometheus` et `grafana` démarrent : à vous
-d'ajouter `backend` + `frontend` et de compléter le reste (cf. TODO).
 
 ---
 
