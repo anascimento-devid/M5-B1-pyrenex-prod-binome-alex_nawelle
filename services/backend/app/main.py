@@ -12,9 +12,12 @@ from __future__ import annotations
 
 import os
 
-from fastapi import FastAPI, Request
+import httpx
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
+from app.metrics import observe_upstream_error
 from app.middleware import LoggingMiddleware
 from app.schemas import HealthResponse, LoanApplication, Prediction
 
@@ -34,11 +37,16 @@ app.add_middleware(
 # TODO 1 — exposer /metrics avec prometheus-fastapi-instrumentator
 #   (cf. service model). Pensez à une métrique métier : compteur d'erreurs
 #   upstream lors de l'appel au model.
+Instrumentator(should_group_status_codes=False).instrument(app).expose(
+    app, endpoint="/metrics", include_in_schema=False
+)
+
 
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     """Liveness du backend (ne dépend PAS du model)."""
+
     return HealthResponse(status="ok")
 
 
@@ -49,6 +57,28 @@ async def health() -> HealthResponse:
 #   - gère les erreurs : model injoignable → 503, model en erreur → 502,
 #   - retourne un objet Prediction.
 #
-# @app.post("/score", response_model=Prediction)
-# async def score(application: LoanApplication, request: Request) -> Prediction:
-#     ...
+@app.post("/score", response_model=Prediction)
+async def score(application: LoanApplication, request: Request) -> Prediction:
+    request_id = getattr(request.state, "request_id", "n/a")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"{MODEL_URL}/predict",
+                json=application.model_dump(),
+                headers={"X-Request-ID": request_id},
+            )
+
+    except httpx.RequestError as exc:
+        observe_upstream_error("unavailable")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Model service unavailable",
+        ) from exc
+
+    if response.is_error:
+        observe_upstream_error("model_error")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Model service returned an error",
+        )
