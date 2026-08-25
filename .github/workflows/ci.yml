@@ -49,7 +49,10 @@ jobs:
 
   build-and-push:
     needs: [test] # ajouter le evaluate-model
-    if: github.event_name == 'push'
+    # DÉMO CI ROUGE — condition élargie temporairement pour tester l'échec
+    # de build sur une PR (normalement : if: github.event_name == 'push').
+    # À revert avant de merger quoi que ce soit, branche jetable.
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
