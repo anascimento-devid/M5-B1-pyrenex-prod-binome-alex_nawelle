@@ -8,6 +8,7 @@ métriques métier custom). Service **interne** : il est appelé par le
 from __future__ import annotations
 
 import json
+import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -40,8 +41,9 @@ logger.add(
 # --- Lifespan ---------------------------------------------------------------
 
 MODELS_DIR = Path(__file__).parent.parent / "models"
-MODEL_PATH = MODELS_DIR / "pyrenex_risk_v2_balanced.joblib"
-META_PATH = MODELS_DIR / "pyrenex_risk_v2_balanced.json"
+MODEL_NAME = os.environ.get("MODEL_NAME", "pyrenex_risk_v2_balanced")
+MODEL_PATH = MODELS_DIR / f"{MODEL_NAME}.joblib"
+META_PATH = MODELS_DIR / f"{MODEL_NAME}.json"
 
 
 @asynccontextmanager
@@ -95,7 +97,7 @@ async def info() -> InfoResponse:
         model_name=meta["model_name"],
         model_version=meta["model_version"],
         model_created_at=meta["created_at"],
-        metrics_holdout=meta["metrics_holdout"],
+        metrics_holdout=meta.get("metrics_holdout"),
         sklearn_version=meta.get("sklearn_version"),
         dataset_sha256=meta.get("dataset_sha256"),
     )
