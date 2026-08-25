@@ -8,6 +8,9 @@
     body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
     label { display: block; margin: .4rem 0 .1rem; font-size: .9rem; }
     input, select { width: 100%; padding: .4rem; box-sizing: border-box; }
+    input[readonly] { background: #f3f3f3; color: #555; }
+    fieldset { margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 8px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
     button { padding: .6rem 1.2rem; font-size: 1rem; cursor: pointer; }
     #result { margin-top: 1rem; padding: 1rem; border-radius: 8px; display: none; }
     .ok { background: #e6f4ea; } .ko { background: #fce8e6; }
@@ -16,12 +19,119 @@
 <body>
   <h1>Pyrenex Crédit — Évaluation du risque de défaut</h1>
 
-  <!-- TODO 1 — construire le formulaire avec les 14 champs de LoanApplication
-       (cf. services/*/app/schemas.py) : loan_amnt, int_rate, installment,
-       annual_inc, dti, delinq_2yrs, fico_range_low, revol_util (numériques)
-       + term, grade, home_ownership, verification_status, purpose, emp_length. -->
   <form id="scoreForm">
-    <!-- … champs à compléter … -->
+    <fieldset>
+      <legend>Prêt</legend>
+      <div class="grid">
+        <div>
+          <label for="loan_amnt">Montant du prêt (USD)</label>
+          <input type="number" id="loan_amnt" name="loan_amnt" min="500" max="40000" step="1" value="10000" required>
+        </div>
+        <div>
+          <label for="term">Durée</label>
+          <select id="term" name="term" required>
+            <option value="36 months">36 mois</option>
+            <option value="60 months">60 mois</option>
+          </select>
+        </div>
+        <div>
+          <label for="int_rate">Taux d'intérêt (%)</label>
+          <input type="number" id="int_rate" name="int_rate" min="0" max="50" step="0.01" value="13.5" required>
+        </div>
+        <div>
+          <label for="installment">Mensualité (USD)</label>
+          <input type="number" id="installment" name="installment" min="0" max="2000" step="0.01" value="340" readonly>
+        </div>
+        <div>
+          <label for="grade">Grade</label>
+          <select id="grade" name="grade" required>
+            <option>A</option><option>B</option><option>C</option>
+            <option>D</option><option>E</option><option>F</option><option>G</option>
+          </select>
+        </div>
+        <div>
+          <label for="purpose">Objet du prêt</label>
+          <select id="purpose" name="purpose" required>
+            <option value="debt_consolidation" selected>Consolidation de dettes</option>
+            <option value="credit_card">Carte de crédit</option>
+            <option value="home_improvement">Travaux</option>
+            <option value="major_purchase">Achat important</option>
+            <option value="small_business">Petite entreprise</option>
+            <option value="car">Véhicule</option>
+            <option value="medical">Frais médicaux</option>
+            <option value="moving">Déménagement</option>
+            <option value="vacation">Vacances</option>
+            <option value="house">Logement</option>
+            <option value="wedding">Mariage</option>
+            <option value="renewable_energy">Énergie renouvelable</option>
+            <option value="educational">Études</option>
+            <option value="other">Autre</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Profil emprunteur</legend>
+      <div class="grid">
+        <div>
+          <label for="annual_inc">Revenu annuel (USD)</label>
+          <input type="number" id="annual_inc" name="annual_inc" min="0" max="10000000" step="1" value="55000" required>
+        </div>
+        <div>
+          <label for="dti">Taux d'endettement (dti)</label>
+          <input type="number" id="dti" name="dti" min="0" max="200" step="0.01" value="18.2" required>
+        </div>
+        <div>
+          <label for="fico_range_low">Score FICO (borne basse)</label>
+          <input type="number" id="fico_range_low" name="fico_range_low" min="300" max="850" step="1" value="690" required>
+        </div>
+        <div>
+          <label for="revol_util">Utilisation du crédit renouvelable (%)</label>
+          <input type="number" id="revol_util" name="revol_util" min="0" max="300" step="0.01" value="42.5" required>
+        </div>
+        <div>
+          <label for="delinq_2yrs">Incidents de paiement (2 ans)</label>
+          <input type="number" id="delinq_2yrs" name="delinq_2yrs" min="0" max="50" step="1" value="0" required>
+        </div>
+        <div>
+          <label for="home_ownership">Statut logement</label>
+          <select id="home_ownership" name="home_ownership" required>
+            <option value="RENT">Locataire</option>
+            <option value="MORTGAGE">Hypothèque</option>
+            <option value="OWN">Propriétaire</option>
+            <option value="OTHER">Autre</option>
+            <option value="NONE">Aucun</option>
+            <option value="ANY">Indifférent</option>
+          </select>
+        </div>
+        <div>
+          <label for="verification_status">Vérification des revenus</label>
+          <select id="verification_status" name="verification_status" required>
+            <option value="Verified">Vérifié</option>
+            <option value="Source Verified">Source vérifiée</option>
+            <option value="Not Verified">Non vérifié</option>
+          </select>
+        </div>
+        <div>
+          <label for="emp_length">Ancienneté emploi</label>
+          <select id="emp_length" name="emp_length" required>
+            <option value="< 1 year">&lt; 1 an</option>
+            <option value="1 year">1 an</option>
+            <option value="2 years">2 ans</option>
+            <option value="3 years">3 ans</option>
+            <option value="4 years">4 ans</option>
+            <option value="5 years">5 ans</option>
+            <option value="6 years">6 ans</option>
+            <option value="7 years">7 ans</option>
+            <option value="8 years">8 ans</option>
+            <option value="9 years">9 ans</option>
+            <option value="10+ years" selected>10 ans ou plus</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
     <button type="submit">Évaluer le risque</button>
   </form>
 
@@ -30,12 +140,73 @@
   <script>
     const form = document.getElementById('scoreForm');
     const result = document.getElementById('result');
+
+    const NUMERIC_FIELDS = new Set([
+      'loan_amnt', 'int_rate', 'installment', 'annual_inc',
+      'dti', 'delinq_2yrs', 'fico_range_low', 'revol_util',
+    ]);
+
+    const loanAmntInput = document.getElementById('loan_amnt');
+    const intRateInput = document.getElementById('int_rate');
+    const termSelect = document.getElementById('term');
+    const installmentInput = document.getElementById('installment');
+
+    function computeInstallment() {
+      const principal = Number(loanAmntInput.value);
+      const monthlyRate = Number(intRateInput.value) / 100 / 12;
+      const months = termSelect.value === '60 months' ? 60 : 36;
+
+      if (!Number.isFinite(principal) || principal <= 0) return;
+
+      const installment = monthlyRate > 0
+        ? (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -months))
+        : principal / months;
+
+      installmentInput.value = installment.toFixed(2);
+    }
+
+    [loanAmntInput, intRateInput, termSelect].forEach((el) =>
+      el.addEventListener('input', computeInstallment)
+    );
+    computeInstallment();
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      // TODO 2 — construire le payload JSON depuis le formulaire
-      //   (penser à convertir les champs numériques en Number).
-      // TODO 3 — POST vers /api/score (même origine grâce au proxy nginx),
-      //   afficher prediction + probability, gérer les erreurs.
+
+      const formData = new FormData(form);
+      const payload = {};
+      for (const [key, value] of formData.entries()) {
+        payload[key] = NUMERIC_FIELDS.has(key) ? Number(value) : value;
+      }
+
+      result.style.display = 'block';
+      result.className = '';
+      result.textContent = 'Évaluation en cours…';
+
+      try {
+        const response = await fetch('/api/score', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const errorBody = await response.json().catch(() => ({}));
+          throw new Error(errorBody.detail || `Erreur ${response.status}`);
+        }
+
+        const data = await response.json();
+        const verdict = data.prediction === 1 ? 'Risque de défaut' : 'Prêt sain';
+        result.className = data.prediction === 1 ? 'ko' : 'ok';
+        result.innerHTML = `
+          <strong>${verdict}</strong><br>
+          Probabilité de défaut : ${(data.probability * 100).toFixed(1)}%<br>
+          Modèle : ${data.model_version} — requête ${data.request_id}
+        `;
+      } catch (err) {
+        result.className = 'ko';
+        result.textContent = `Erreur : ${err.message}`;
+      }
     });
   </script>
 </body>
