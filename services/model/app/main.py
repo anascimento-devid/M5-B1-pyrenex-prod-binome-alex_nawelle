@@ -40,8 +40,8 @@ logger.add(
 # --- Lifespan ---------------------------------------------------------------
 
 MODELS_DIR = Path(__file__).parent.parent / "models"
-MODEL_PATH = MODELS_DIR / "pyrenex_risk_v2.joblib"
-META_PATH = MODELS_DIR / "pyrenex_risk_v2.json"
+MODEL_PATH = MODELS_DIR / "pyrenex_risk_v2_balanced.joblib"
+META_PATH = MODELS_DIR / "pyrenex_risk_v2_balanced.json"
 
 
 @asynccontextmanager
