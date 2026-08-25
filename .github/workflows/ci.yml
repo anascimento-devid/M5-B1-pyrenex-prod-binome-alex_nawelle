@@ -25,11 +25,25 @@ jobs:
   #   qui DOIT bloquer (exit≠0) si une métrique passe sous les seuils.
   #   Uploadez mlruns/ en artefact.
   evaluate-model:
-    needs: [test, evaluate-model]
+    needs: [test]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install model deps
+        run: pip install -r services/model/requirements.txt mlflow
+      - name: Evaluate model
+        run: python scripts/evaluate_model.py --release-tag ${{ github.ref_name }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlruns-${{ github.ref_name }}
+          path: mlruns/
 
   # TODO 2 — job `build-and-push` :
   #   needs: [test, evaluate-model] ; if: push ; login GHCR ;
