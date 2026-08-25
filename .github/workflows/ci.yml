@@ -24,55 +24,39 @@ jobs:
   #   needs: test ; lance `python scripts/evaluate_model.py --release-tag <ref>`
   #   qui DOIT bloquer (exit≠0) si une métrique passe sous les seuils.
   #   Uploadez mlruns/ en artefact.
-  evaluate-model:
-    needs: [test]
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install model deps
-        run: pip install -r services/model/requirements.txt mlflow
-      - name: Evaluate model
-        run: python scripts/evaluate_model.py --release-tag ${{ github.ref_name }}
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mlruns-${{ github.ref_name }}
-          path: mlruns/
-
-  # TODO 2 — job `build-and-push` :
-  #   needs: [test, evaluate-model] ; if: push ; login GHCR ;
-  #   `docker compose build` ; tag + push de l'image model ; tag de release.
-  #
-  #   Deux pièges qui vous coûteront la fin de journée si vous les ignorez :
-  #   a) GHCR n'accepte QUE des noms d'image en **minuscules**. Votre repo
-  #      s'appelle `Formation-SIMPLON-IA/M5-B1-...` → passez le nom dans
-  #      `tr '[:upper:]' '[:lower:]'` avant le `docker tag`, sinon :
-  #      « invalid reference format: repository name must be lowercase ».
-  #   b) `docker compose images -q model` ne liste que les images des
-  #      conteneurs **créés**. Après un simple `docker compose build`, elle
-  #      renvoie une chaîne vide et le `docker tag` casse. Buildez l'image à
-  #      pousser avec `docker build -t "$IMG:$TAG" ./services/model`.
-  build:
-    needs: test           # ← bloque si les tests échouent
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: docker compose build
+  # Écrit par Alex, désactivé pour M5-B1 : scripts/evaluate_model.py n'existe
+  # pas encore (seul le TEMPLATE est présent) — à réactiver jeudi (M5-B2).
+  # evaluate-model:
+  #   needs: [test]
+  #   if: github.event_name == 'push'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Setup Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.11"
+  #     - name: Install model deps
+  #       run: pip install -r services/model/requirements.txt mlflow
+  #     - name: Evaluate model
+  #       run: python scripts/evaluate_model.py --release-tag ${{ github.ref_name }}
+  #     - name: Upload artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: mlruns-${{ github.ref_name }}
+  #         path: mlruns/
 
   build-and-push:
-    needs: [test, evaluate-model]
+    needs: [test] # ajouter le evaluate-model
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        service: [model, backend, frontend]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,10 +67,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push model image
+      - name: Build and push ${{ matrix.service }} image
         run: |
-          IMG="ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')-model"
+          IMG="ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')-${{ matrix.service }}"
           TAG="${GITHUB_REF_NAME//\//-}"
-      
-          docker build -t "$IMG:$TAG" ./services/model
+          docker build -t "$IMG:$TAG" ./services/${{ matrix.service }}
           docker push "$IMG:$TAG"
