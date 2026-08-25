@@ -40,11 +40,34 @@
       "emp_length"
     ]
   },
+  "feature_columns_numeric": [
+    "loan_amnt",
+    "int_rate",
+    "installment",
+    "annual_inc",
+    "dti",
+    "delinq_2yrs",
+    "fico_range_low",
+    "revol_util"
+  ],
+  "feature_columns_categorical": [
+    "term",
+    "grade",
+    "home_ownership",
+    "verification_status",
+    "purpose",
+    "emp_length"
+  ],
   "target": {
     "column": "loan_status",
     "mapping": {
       "Fully Paid": 0,
       "Charged Off": 1
     }
+  },
+  "target_column": "loan_status",
+  "target_mapping": {
+    "Fully Paid": 0,
+    "Charged Off": 1
   }
 }

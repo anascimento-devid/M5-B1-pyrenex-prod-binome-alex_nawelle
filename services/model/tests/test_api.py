@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import joblib
 import pandas as pd
 
-MODELS_DIR = Path(__file__).parent.parent / "models"
+from app.main import MODEL_PATH, META_PATH
 
 
 # --- Tests API --------------------------------------------------------------
@@ -46,8 +45,8 @@ def test_metrics_endpoint_exposes_prometheus(client, valid_payload):
 def test_model_contract_features_and_output():
     """Le modèle chargé accepte EXACTEMENT les features attendues et sort
     une proba dans [0, 1] — garde-fou anti-régression schéma."""
-    model = joblib.load(MODELS_DIR / "pyrenex_risk_v2.joblib")
-    meta = json.loads((MODELS_DIR / "pyrenex_risk_v2.json").read_text())
+    model = joblib.load(MODEL_PATH)
+    meta = json.loads(META_PATH.read_text())
 
     cols = meta["feature_columns_numeric"] + meta["feature_columns_categorical"]
     row = {
