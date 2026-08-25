@@ -82,3 +82,5 @@ async def score(application: LoanApplication, request: Request) -> Prediction:
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Model service returned an error",
         )
+
+    return Prediction(**response.json())
