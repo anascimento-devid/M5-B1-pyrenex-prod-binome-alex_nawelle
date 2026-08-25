@@ -24,6 +24,12 @@ jobs:
   #   needs: test ; lance `python scripts/evaluate_model.py --release-tag <ref>`
   #   qui DOIT bloquer (exit≠0) si une métrique passe sous les seuils.
   #   Uploadez mlruns/ en artefact.
+  evaluate-model:
+    needs: [test, evaluate-model]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+
 
   # TODO 2 — job `build-and-push` :
   #   needs: [test, evaluate-model] ; if: push ; login GHCR ;
@@ -38,3 +44,35 @@ jobs:
   #      conteneurs **créés**. Après un simple `docker compose build`, elle
   #      renvoie une chaîne vide et le `docker tag` casse. Buildez l'image à
   #      pousser avec `docker build -t "$IMG:$TAG" ./services/model`.
+  build:
+    needs: test           # ← bloque si les tests échouent
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose build
+
+  build-and-push:
+    needs: [test, evaluate-model]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push model image
+        run: |
+          IMG="ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')-model"
+          TAG="${GITHUB_REF_NAME//\//-}"
+      
+          docker build -t "$IMG:$TAG" ./services/model
+          docker push "$IMG:$TAG"
