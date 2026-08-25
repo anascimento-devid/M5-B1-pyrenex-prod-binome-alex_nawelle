@@ -51,7 +51,10 @@ def test_model_contract_features_and_output():
 
     cols = meta["feature_columns_numeric"] + meta["feature_columns_categorical"]
     row = {
-        "loan_amnt": 10000.0, "int_rate": 13.5, "installment": 340.0,
+        # DÉMO CI ROUGE — colonne renommée par erreur (loan_amnt → loan_amount)
+        # pour simuler une régression de schéma : ce test doit planter et
+        # bloquer build-and-push. À revert avant de merger quoi que ce soit.
+        "loan_amount": 10000.0, "int_rate": 13.5, "installment": 340.0,
         "annual_inc": 55000.0, "dti": 18.2, "delinq_2yrs": 0,
         "fico_range_low": 690, "revol_util": 42.5, "term": "36 months",
         "grade": "B", "home_ownership": "MORTGAGE",
