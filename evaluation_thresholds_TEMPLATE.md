@@ -6,6 +6,27 @@
 Stratégie retenue (absolu / relatif / **hybride**) : _à choisir et justifier_.
 Jeu de référence : `data/reference_set.csv` (sous-échantillon figé du holdout M1).
 
+## Composition du jeu de référence
+
+Le jeu de référence (500 lignes) est tiré du holdout M1
+(`data/lending_club_holdout.csv`, 6000 lignes, 18,4 % de défauts) par
+tirage stratifié **équilibré (250 `Charged Off` / 250 `Fully Paid`)**, seed
+fixe `42`, plutôt que représentatif de la prod (~18 % de défauts, soit ~90
+défauts sur 500). Recette reproductible : `scripts/build_reference_set.py`.
+
+**Justification** : le coût métier d'une erreur n'est pas symétrique — un
+défaut non détecté (faux négatif) fait perdre le capital prêté à Pyrenex,
+alors qu'un faux positif ne coûte qu'un manque à gagner sur les intérêts.
+`recall_default` est donc la métrique la plus critique de ce garde-fou
+(c'est justement la faiblesse documentée du modèle v1 : `recall=0.05`,
+95 % des défauts non détectés). Un jeu équilibré donne 250 défauts pour
+mesurer cette métrique au lieu de ~90 en échantillon représentatif — un
+signal nettement moins bruité, donc un seuil de tolérance plus resserré
+et plus utile. Contrepartie assumée : le F1 macro/ROC-AUC mesurés ici ne
+sont pas directement comparables à la distribution réelle de prod — ce
+n'est pas leur rôle, seul le golden run sur ce même jeu arbitre les
+releases.
+
 ## Deux baselines, à ne pas confondre
 
 | | Mesurée sur | Sert à |
