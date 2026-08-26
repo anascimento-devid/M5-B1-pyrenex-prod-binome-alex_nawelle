@@ -27,17 +27,23 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 import joblib
 import mlflow
 import pandas as pd
+from sklearn.metrics import f1_score, recall_score, roc_auc_score
 
 ROOT = Path(__file__).parent.parent
 MODELS_DIR = ROOT / "services" / "model" / "models"
 REFERENCE_SET = ROOT / "data" / "reference_set.csv"
 REFERENCE_BASELINE = ROOT / "data" / "reference_baseline.json"
+
+MODEL_NAME = os.environ.get("MODEL_NAME", "pyrenex_risk_v2_balanced")
+MODEL_PATH = MODELS_DIR / f"{MODEL_NAME}.joblib"
+META_PATH = MODELS_DIR / f"{MODEL_NAME}.json"
 
 # TODO 1 — définir vos seuils (stratégie absolu / relatif / hybride).
 #   Documentez-les ET justifiez-les dans evaluation_thresholds.md.
@@ -52,34 +58,74 @@ THRESHOLDS: dict[str, dict[str, float]] = {
 
 def compute_metrics(model, df: pd.DataFrame, meta: dict) -> dict[str, float]:
     """Calcule les métriques cibles sur le jeu de référence."""
-    # TODO 2 — construire X (feature_columns_*) et y (target + target_mapping),
-    #   prédire, et calculer f1_macro / f1_default / roc_auc / recall_default.
-    raise NotImplementedError
+
+    feature_columns = meta["feature_columns_numeric"] + meta["feature_columns_categorical"]
+    target_mapping = meta["target_mapping"]
+
+    X = df[feature_columns]
+    y_true = df[meta["target_column"]].map(target_mapping)
+
+    y_pred = model.predict(X)
+    y_proba = model.predict_proba(X)[:, 1]  # proba de la classe "défaut" (label 1)
+
+    default_label = target_mapping["Charged Off"]
+
+    return {
+        "f1_macro": f1_score(y_true, y_pred, average="macro"),
+        "f1_default": f1_score(y_true, y_pred, pos_label=default_label),
+        "roc_auc": roc_auc_score(y_true, y_proba),
+        "recall_default": recall_score(y_true, y_pred, pos_label=default_label),
+    }
 
 
 def check_thresholds(metrics: dict[str, float], baseline: dict) -> list[str]:
     """Retourne la liste des violations de seuil (vide = release OK)."""
-    # TODO 3 — comparer chaque métrique à son plancher absolu ET à la baisse
-    #   max tolérée vs baseline. Retourner les messages de violation.
-    raise NotImplementedError
+
+    violations: list[str] = []
+    baseline_metrics = baseline["metrics"]
+
+    for name, rules in THRESHOLDS.items():
+        value = metrics[name]
+        golden = baseline_metrics[name]
+
+        absolute_min = rules.get("absolute_min")
+        if absolute_min is not None and value < absolute_min:
+            violations.append(
+                f"{name}={value:.4f} < plancher absolu {absolute_min:.4f}"
+            )
+
+        max_drop = rules.get("max_drop_vs_baseline")
+        if max_drop is not None and (golden - value) > max_drop:
+            violations.append(
+                f"{name}={value:.4f} a baissé de {golden - value:.4f} vs golden "
+                f"run {golden:.4f} (baisse max tolérée {max_drop:.4f})"
+            )
+
+    return violations
 
 
 def load_baseline() -> dict:
     """Charge le golden run (baseline mesurée sur le jeu de référence)."""
-    # TODO 3bis — lire REFERENCE_BASELINE et renvoyer ses métriques.
-    #   Si le fichier n'existe pas : lever une erreur explicite qui dit de
-    #   lancer `--freeze-baseline`. Surtout **pas** de repli silencieux sur
-    #   `meta["metrics_holdout"]` : ce serait comparer deux populations.
-    raise NotImplementedError
+
+    if not REFERENCE_BASELINE.exists():
+        raise FileNotFoundError(
+            f"{REFERENCE_BASELINE} introuvable. Gelez le golden run d'abord : "
+            "python scripts/evaluate_model.py --freeze-baseline"
+        )
+    return json.loads(REFERENCE_BASELINE.read_text(encoding="utf-8"))
 
 
 def freeze_baseline(model, df: pd.DataFrame, meta: dict) -> dict:
     """Mesure et gèle le golden run sur le jeu de référence."""
-    # TODO 3ter — calculer les métriques sur le jeu de référence et les écrire
-    #   dans REFERENCE_BASELINE (avec model_version, reference_set,
-    #   n_reference). Ce fichier est **versionné** : c'est lui qui arbitre les
-    #   releases. À regeler seulement si le jeu OU le modèle de référence change.
-    raise NotImplementedError
+
+    baseline = {
+        "model_version": meta["model_version"],
+        "reference_set": REFERENCE_SET.name,
+        "n_reference": len(df),
+        "metrics": compute_metrics(model, df, meta),
+    }
+    REFERENCE_BASELINE.write_text(json.dumps(baseline, indent=2), encoding="utf-8")
+    return baseline
 
 
 def main() -> int:
@@ -89,8 +135,8 @@ def main() -> int:
     parser.add_argument("--freeze-baseline", action="store_true")
     args = parser.parse_args()
 
-    model = joblib.load(MODELS_DIR / "pyrenex_risk_v2.joblib")
-    meta = json.loads((MODELS_DIR / "pyrenex_risk_v2.json").read_text(encoding="utf-8"))
+    model = joblib.load(MODEL_PATH)
+    meta = json.loads(META_PATH.read_text(encoding="utf-8"))
     df = pd.read_csv(REFERENCE_SET)
 
     if args.freeze_baseline:
